@@ -6,6 +6,8 @@ document.addEventListener("DOMContentLoaded", () => {
     const rosterListContainer = document.getElementById("roster-list");
     const studentForm = document.getElementById("student-form");
     const studentCountBadge = document.getElementById("student-count-badge");
+    const heroTotalStudents = document.getElementById("hero-total-students");
+    const heroTotalCourses = document.getElementById("hero-total-courses");
     const errorBanner = document.getElementById("error-banner");
 
     const minAgeFilterInput = document.getElementById("min-age-filter");
@@ -61,7 +63,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
         const idEl = document.createElement("span");
         idEl.className = "card-id";
-        idEl.textContent = `ID: #${student.id}`;
+        idEl.textContent = `#${student.id}`;
 
         cardHeader.appendChild(nameEl);
         cardHeader.appendChild(idEl);
@@ -87,7 +89,7 @@ document.addEventListener("DOMContentLoaded", () => {
         ageControlDiv.className = "card-age-control";
 
         const ageLabel = document.createElement("label");
-        ageLabel.textContent = "New Age:";
+        ageLabel.textContent = "Edit Age:";
 
         const ageInput = document.createElement("input");
         ageInput.type = "number";
@@ -97,7 +99,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
         const saveAgeBtn = document.createElement("button");
         saveAgeBtn.className = "btn btn-secondary btn-save-age";
-        saveAgeBtn.textContent = "Save Age";
+        saveAgeBtn.textContent = "Save";
         saveAgeBtn.dataset.action = "save-age";
 
         ageControlDiv.appendChild(ageLabel);
@@ -126,6 +128,17 @@ document.addEventListener("DOMContentLoaded", () => {
         return card;
     }
 
+    // Update Hero Stats
+    function updateHeroStats(studentList) {
+        if (heroTotalStudents) {
+            heroTotalStudents.textContent = studentList.length;
+        }
+        if (heroTotalCourses) {
+            const totalCourses = studentList.reduce((acc, s) => acc + (s.courses ? s.courses.length : 0), 0);
+            heroTotalCourses.textContent = totalCourses;
+        }
+    }
+
     // ==========================================
     // FETCH AND RENDER ROSTER
     // ==========================================
@@ -152,6 +165,7 @@ document.addEventListener("DOMContentLoaded", () => {
             });
 
             studentCountBadge.textContent = `${students.length} Students`;
+            updateHeroStats(students);
         } catch (err) {
             showError("Could not reach the StudyTrack backend. Please ensure the FastAPI server is running.");
             console.error("Fetch Roster Error:", err);
@@ -161,7 +175,6 @@ document.addEventListener("DOMContentLoaded", () => {
     // ==========================================
     // EVENT DELEGATION ON #roster-list
     // ==========================================
-    // Single event listener attached to container to handle "Save Age" and "Delete"
     rosterListContainer.addEventListener("click", async (event) => {
         const action = event.target.dataset.action;
         if (!action) return;
@@ -221,6 +234,7 @@ document.addEventListener("DOMContentLoaded", () => {
                 // Update student count badge
                 const currentCards = rosterListContainer.querySelectorAll(".student-card");
                 studentCountBadge.textContent = `${currentCards.length} Students`;
+                if (heroTotalStudents) heroTotalStudents.textContent = currentCards.length;
             } catch (err) {
                 showError(`Delete operation failed: ${err.message}`);
                 console.error("Delete Student Error:", err);
@@ -269,6 +283,7 @@ document.addEventListener("DOMContentLoaded", () => {
             // Update badge & reset form
             const currentCards = rosterListContainer.querySelectorAll(".student-card");
             studentCountBadge.textContent = `${currentCards.length} Students`;
+            if (heroTotalStudents) heroTotalStudents.textContent = currentCards.length;
             studentForm.reset();
         } catch (err) {
             showError(`Could not add student: ${err.message}`);
@@ -367,9 +382,9 @@ document.addEventListener("DOMContentLoaded", () => {
             aiSummaryOutput.classList.remove("hidden");
             aiSummaryOutput.innerHTML = `
                 <h5>Topic: ${escapeHtml(data.topic)}</h5>
-                <p><strong>Difficulty:</strong> <span class="badge">${data.difficulty}</span></p>
+                <p style="margin: 6px 0;"><strong>Difficulty:</strong> <span class="badge" style="background: rgba(168,85,247,0.2); color: #c084fc;">${data.difficulty}</span></p>
                 <p style="margin-top: 8px;"><strong>Key Points:</strong></p>
-                <ul>
+                <ul style="margin-top: 4px;">
                     ${data.key_points.length > 0 
                         ? data.key_points.map(kp => `<li>${escapeHtml(kp)}</li>`).join("") 
                         : "<li><em>(No key points extracted)</em></li>"}
@@ -396,11 +411,11 @@ document.addEventListener("DOMContentLoaded", () => {
 
             const itemsHtml = results.map(item => `
                 <div class="ai-search-item">
-                    <div style="display: flex; justify-content: space-between;">
+                    <div style="display: flex; justify-content: space-between; align-items: center;">
                         <strong>Note #${item.id}</strong>
                         <span class="score-badge">Score: ${item.score}</span>
                     </div>
-                    <p style="font-size: 0.85rem; color: var(--text-muted); margin-top: 4px;">${escapeHtml(item.text)}</p>
+                    <p style="font-size: 0.85rem; color: var(--text-muted); margin-top: 6px; line-height: 1.4;">${escapeHtml(item.text)}</p>
                 </div>
             `).join("");
 

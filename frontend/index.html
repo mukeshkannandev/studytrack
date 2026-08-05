@@ -3,35 +3,79 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>StudyTrack — Trainee Enablement & Roster Platform</title>
+    <title>StudyTrack — Trainee Enablement & AI Algorithms Platform</title>
     <link rel="stylesheet" href="style.css">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
 </head>
 <body>
     <div id="error-banner" class="error-banner hidden" role="alert"></div>
 
+    <!-- App Header -->
     <header class="app-header">
         <div class="header-container">
             <div class="logo-group">
-                <span class="logo-icon">⚡</span>
-                <h1>StudyTrack</h1>
+                <div class="logo-icon-wrapper">
+                    <span class="logo-icon">⚡</span>
+                </div>
+                <div>
+                    <h1>StudyTrack</h1>
+                    <p class="subtitle">Myntra Trainee Enablement & AI Algorithms Engine</p>
+                </div>
             </div>
-            <p class="subtitle">Myntra Trainee Enablement Roster & AI Engine</p>
+            <div class="header-status">
+                <span class="status-indicator online"></span>
+                <span class="status-text">Backend Connected</span>
+            </div>
         </div>
     </header>
 
+    <!-- Hero Stats Bar -->
+    <section class="stats-hero-section">
+        <div class="stats-container">
+            <div class="stat-card">
+                <div class="stat-icon">👥</div>
+                <div class="stat-info">
+                    <span class="stat-label">Total Trainees</span>
+                    <span class="stat-value" id="hero-total-students">8</span>
+                </div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-icon">📚</div>
+                <div class="stat-info">
+                    <span class="stat-label">Active Courses</span>
+                    <span class="stat-value" id="hero-total-courses">2</span>
+                </div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-icon">⚡</div>
+                <div class="stat-info">
+                    <span class="stat-label">Algorithms Engine</span>
+                    <span class="stat-value">Hand-Rolled</span>
+                </div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-icon">🤖</div>
+                <div class="stat-info">
+                    <span class="stat-label">AI Assistant Mode</span>
+                    <span class="stat-value">12-Vocab Vector</span>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Main Layout Grid -->
     <div class="app-layout">
         <main class="main-content">
             <!-- Roster Control Bar -->
             <section class="control-bar-section">
                 <div class="section-title-group">
                     <h2>Student Roster Management</h2>
-                    <span class="badge" id="student-count-badge">0 Students</span>
+                    <span class="badge" id="student-count-badge">8 Students</span>
                 </div>
                 <div class="filter-controls">
-                    <label for="min-age-filter">Filter Min Age:</label>
+                    <label for="min-age-filter">Min Age:</label>
                     <input type="number" id="min-age-filter" placeholder="e.g. 21" min="1" class="input-field-sm">
                     <button id="apply-filter-btn" class="btn btn-secondary">Apply Filter</button>
                     <button id="clear-filter-btn" class="btn btn-outline">Clear</button>
@@ -47,7 +91,10 @@
 
             <!-- Add Student Form Section -->
             <section class="form-section">
-                <h2>Add New Student Record</h2>
+                <div class="section-header-inline">
+                    <h2>✨ Enroll New Trainee</h2>
+                    <span class="form-badge">POST /students/</span>
+                </div>
                 <form id="student-form" class="student-form" novalidate>
                     <div class="form-grid">
                         <div class="form-group">
@@ -63,7 +110,7 @@
                             <input type="number" id="student-age" name="age" placeholder="e.g. 22" min="1" required class="input-field">
                         </div>
                     </div>
-                    <button type="submit" class="btn btn-primary btn-submit">+ Add Student to Roster</button>
+                    <button type="submit" class="btn btn-primary btn-submit">+ Add Trainee to Roster</button>
                 </form>
             </section>
         </main>
