@@ -3,14 +3,17 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>StudyTrack — Trainee Enablement & AI Algorithms Platform</title>
+    <title>StudyTrack — Trainee Enablement & Enterprise AI Platform</title>
     <link rel="stylesheet" href="style.css">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&family=JetBrains+Mono:ital,wght@0,400;0,500;0,700;1,400&display=swap" rel="stylesheet">
 </head>
 <body>
     <div id="error-banner" class="error-banner hidden" role="alert"></div>
+
+    <!-- Toast Notification Container -->
+    <div id="toast-container" class="toast-container"></div>
 
     <!-- App Header -->
     <header class="app-header">
@@ -20,13 +23,18 @@
                     <span class="logo-icon">⚡</span>
                 </div>
                 <div>
-                    <h1>StudyTrack</h1>
-                    <p class="subtitle">Myntra Trainee Enablement & AI Algorithms Engine</p>
+                    <h1>StudyTrack <span class="version-tag">v2.0</span></h1>
+                    <p class="subtitle">Myntra Trainee Enablement & Enterprise Algorithms Platform</p>
                 </div>
             </div>
-            <div class="header-status">
-                <span class="status-indicator online"></span>
-                <span class="status-text">Backend Connected</span>
+            <div class="header-actions">
+                <div class="header-status">
+                    <span class="status-indicator online"></span>
+                    <span class="status-text">Backend Connected</span>
+                </div>
+                <div class="keyboard-hint" title="Keyboard Shortcuts Active">
+                    <kbd>Ctrl</kbd> + <kbd>K</kbd> Quick Search
+                </div>
             </div>
         </div>
     </header>
@@ -52,7 +60,7 @@
                 <div class="stat-icon">⚡</div>
                 <div class="stat-info">
                     <span class="stat-label">Algorithms Engine</span>
-                    <span class="stat-value">Hand-Rolled</span>
+                    <span class="stat-value">O(n²) / O(log n)</span>
                 </div>
             </div>
             <div class="stat-card">
@@ -133,7 +141,7 @@
                         <button id="run-sort-btn" class="btn btn-secondary">Sort</button>
                     </div>
                     <div class="action-row">
-                        <input type="text" id="search-name-input" placeholder="Exact student name..." class="input-field-sm">
+                        <input type="text" id="search-name-input" placeholder="Exact student name... (Ctrl+K)" class="input-field-sm">
                         <button id="run-search-btn" class="btn btn-secondary">Binary Search</button>
                     </div>
                     <button id="gen-report-btn" class="btn btn-outline full-width">Generate Roster Report</button>
@@ -147,7 +155,7 @@
             <section class="panel-card">
                 <div class="panel-header">
                     <h3>🤖 AI Assistant Helper</h3>
-                    <span class="tag tag-ai">Deterministic Mock Mode</span>
+                    <span class="tag tag-ai">Deterministic Vector Mode</span>
                 </div>
                 
                 <!-- Note Summarizer -->
@@ -173,8 +181,37 @@
         </aside>
     </div>
 
+    <!-- Course Enrollment Modal -->
+    <div id="course-modal" class="modal-backdrop hidden">
+        <div class="modal-card">
+            <div class="modal-header">
+                <h3>📚 Enroll Student in Course</h3>
+                <button id="close-modal-btn" class="close-btn">&times;</button>
+            </div>
+            <form id="course-form">
+                <input type="hidden" id="modal-student-id">
+                <div class="form-group" style="margin-bottom: 12px;">
+                    <label>Trainee Target:</label>
+                    <p id="modal-student-name" style="font-weight: 700; color: #a5b4fc;"></p>
+                </div>
+                <div class="form-group" style="margin-bottom: 12px;">
+                    <label for="course-name-input">Course Name</label>
+                    <input type="text" id="course-name-input" placeholder="e.g. System Design Fundamentals" required class="input-field">
+                </div>
+                <div class="form-group" style="margin-bottom: 20px;">
+                    <label for="course-credits-input">Credits (Must be between 1 and 6)</label>
+                    <input type="number" id="course-credits-input" min="1" max="6" value="3" required class="input-field">
+                </div>
+                <div style="display: flex; gap: 10px; justify-content: flex-end;">
+                    <button type="button" id="cancel-modal-btn" class="btn btn-outline">Cancel</button>
+                    <button type="submit" class="btn btn-primary">Enroll Course (POST /courses/)</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
     <footer class="app-footer">
-        <p>StudyTrack Platform &copy; 2026 Myntra Trainee Enablement Team. Built with FastAPI, SQLAlchemy, & Vanilla JavaScript.</p>
+        <p>StudyTrack Enterprise &copy; 2026 Myntra Trainee Enablement Team. Built with FastAPI, SQLAlchemy, & Vanilla JavaScript.</p>
     </footer>
 
     <script src="app.js"></script>
