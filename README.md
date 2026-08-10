@@ -1,27 +1,27 @@
-# StudyTrack — Unified Full-Stack Study Management Platform
+# StudyTrack — Enterprise Full-Stack Study Management & AI Platform (v2.0)
 
-StudyTrack is an internal Trainee Enablement platform built for Myntra. It unifies a live Student/Course roster management backend, a hand-rolled algorithms engine for sorting and searching, and an integrated AI assistant for study note summarization and semantic vector search — all accessible from a single, running web application.
+StudyTrack is an internal Trainee Enablement platform engineered for Myntra. It unifies a live Student/Course roster management backend, a hand-rolled algorithms engine with benchmark tracking and execution tracing, and an integrated AI vector search assistant — all accessible from a single, running web application.
 
 ---
 
-## 🏛️ Repository Structure
+## 🏛️ Repository & Architecture Layout
 
 ```
 studytrack/
 ├── backend/
-│   ├── main.py           # FastAPI application, route declarations, CORS, static mounting
+│   ├── main.py           # FastAPI application, route declarations, CORS, performance middleware
 │   ├── database.py       # SQLAlchemy engine, sessionmaker, Base configuration
 │   ├── models.py         # Student and Course ORM database models
 │   ├── schemas.py        # Pydantic request/response schemas with field validation
 │   ├── crud.py           # Database CRUD operations and SQL aggregate count query
-│   ├── algorithms.py     # Part 2 hand-rolled Insertion Sort, Binary Search & Reports
+│   ├── algorithms.py     # Part 2 hand-rolled Insertion Sort, Binary Search, Traces & Reports
 │   ├── ai_service.py     # Part 3 Note Summarizer, 12-vocab Mock Embed & Cosine Similarity
 │   ├── seed_data.py      # Part 2 exact seed dataset & automatic startup seeding
 │   └── requirements.txt  # Backend dependencies
 ├── frontend/
-│   ├── index.html        # HTML5 semantic dashboard layout
+│   ├── index.html        # HTML5 semantic dashboard layout, Toast engine, Course Modal
 │   ├── style.css         # Dark glassmorphism styling, box-model spacing, responsive media query
-│   └── app.js            # DOM creation, event delegation, fetch requests, error banner
+│   └── app.js            # DOM creation, event delegation on #roster-list, keyboard shortcuts
 ├── .env.example          # Environment variable template
 ├── .gitignore            # Git ignore file excluding secrets, DB, and virtual environments
 └── README.md             # Complete system documentation, setup, and complexity write-up
@@ -103,8 +103,8 @@ StudyTrack operates under the **Single-Process Run Mode** (Recommended). The Fas
 - **Semantic HTML & Glassmorphism Styling**: Built with semantic `<header>`, `<main>`, `<section>`, and `<footer>` elements.
 - **CSS Box Model & Responsive Design**: Explicit padding, margin, and borders are applied to `#roster-list` and individual cards (`.student-card`). The `@media (max-width: 600px)` media query switches student cards to a single column layout on smaller screens.
 - **DOM Element Creation**: Cards are built using `document.createElement()` and appended to the DOM (no list-wide string concatenation).
-- **Event Delegation**: A single click listener is attached to `#roster-list`. It inspects `event.target.dataset.action` to handle "Save Age" (PATCH request) and "Delete Student" (DELETE request).
-- **Error Handling**: If a network error occurs or `response.ok` is false, an on-page `#error-banner` displays plain-language error notifications.
+- **Event Delegation**: A single click listener is attached to `#roster-list`. It inspects `event.target.dataset.action` to handle "Save Age" (PATCH request), "Delete Student" (DELETE request), and "+ Enroll Course" modal triggers.
+- **Toast Notifications & Error Handling**: Toast alert system handles UI notifications, while on-page `#error-banner` handles network/server errors.
 
 ---
 

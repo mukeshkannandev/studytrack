@@ -6,7 +6,18 @@ document.addEventListener("DOMContentLoaded", () => {
     const rosterListContainer = document.getElementById("roster-list");
     const studentForm = document.getElementById("student-form");
     const studentCountBadge = document.getElementById("student-count-badge");
+    const heroTotalStudents = document.getElementById("hero-total-students");
+    const heroTotalCourses = document.getElementById("hero-total-courses");
     const errorBanner = document.getElementById("error-banner");
+    const toastContainer = document.getElementById("toast-container");
+
+    // Modal Elements
+    const courseModal = document.getElementById("course-modal");
+    const courseForm = document.getElementById("course-form");
+    const modalStudentId = document.getElementById("modal-student-id");
+    const modalStudentName = document.getElementById("modal-student-name");
+    const closeModalBtn = document.getElementById("close-modal-btn");
+    const cancelModalBtn = document.getElementById("cancel-modal-btn");
 
     const minAgeFilterInput = document.getElementById("min-age-filter");
     const applyFilterBtn = document.getElementById("apply-filter-btn");
@@ -29,8 +40,29 @@ document.addEventListener("DOMContentLoaded", () => {
     const aiSearchOutput = document.getElementById("ai-search-output");
 
     // ==========================================
-    // ERROR HANDLING UTILITY
+    // TOAST & ERROR HANDLING UTILITIES
     // ==========================================
+    function showToast(message, type = "success") {
+        if (!toastContainer) return;
+        const toast = document.createElement("div");
+        toast.className = `toast toast-${type}`;
+        
+        const iconMap = {
+            success: "✅",
+            error: "⚠️",
+            info: "ℹ️"
+        };
+        
+        toast.innerHTML = `<span>${iconMap[type] || "✨"}</span> <span>${escapeHtml(message)}</span>`;
+        toastContainer.appendChild(toast);
+
+        setTimeout(() => {
+            toast.style.opacity = "0";
+            toast.style.transform = "translateY(20px)";
+            setTimeout(() => toast.remove(), 300);
+        }, 3500);
+    }
+
     function showError(message) {
         if (!errorBanner) return;
         errorBanner.textContent = message;
@@ -61,7 +93,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
         const idEl = document.createElement("span");
         idEl.className = "card-id";
-        idEl.textContent = `ID: #${student.id}`;
+        idEl.textContent = `#${student.id}`;
 
         cardHeader.appendChild(nameEl);
         cardHeader.appendChild(idEl);
@@ -76,18 +108,30 @@ document.addEventListener("DOMContentLoaded", () => {
         ageTextEl.className = "card-age-text";
         ageTextEl.textContent = `Age: ${student.age}`;
 
-        // Courses Count
+        // Courses Count & Add Course Button
         const coursesCount = student.courses ? student.courses.length : 0;
-        const coursesEl = document.createElement("span");
+        const coursesWrapper = document.createElement("div");
+        coursesWrapper.className = "card-courses-wrapper";
+
+        const coursesEl = document.createElement("div");
         coursesEl.className = "card-courses";
-        coursesEl.textContent = `📚 Enrolled Courses: ${coursesCount}`;
+        coursesEl.innerHTML = `<span>📚 Enrolled Courses: ${coursesCount}</span>`;
+
+        const enrollBtn = document.createElement("button");
+        enrollBtn.className = "btn-enroll-sm";
+        enrollBtn.textContent = "+ Enroll Course";
+        enrollBtn.dataset.action = "open-course-modal";
+        enrollBtn.dataset.name = student.name;
+
+        coursesEl.appendChild(enrollBtn);
+        coursesWrapper.appendChild(coursesEl);
 
         // Inline Age Edit Controls
         const ageControlDiv = document.createElement("div");
         ageControlDiv.className = "card-age-control";
 
         const ageLabel = document.createElement("label");
-        ageLabel.textContent = "New Age:";
+        ageLabel.textContent = "Edit Age:";
 
         const ageInput = document.createElement("input");
         ageInput.type = "number";
@@ -97,7 +141,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
         const saveAgeBtn = document.createElement("button");
         saveAgeBtn.className = "btn btn-secondary btn-save-age";
-        saveAgeBtn.textContent = "Save Age";
+        saveAgeBtn.textContent = "Save";
         saveAgeBtn.dataset.action = "save-age";
 
         ageControlDiv.appendChild(ageLabel);
@@ -119,11 +163,22 @@ document.addEventListener("DOMContentLoaded", () => {
         card.appendChild(cardHeader);
         card.appendChild(emailEl);
         card.appendChild(ageTextEl);
-        card.appendChild(coursesEl);
+        card.appendChild(coursesWrapper);
         card.appendChild(ageControlDiv);
         card.appendChild(cardActions);
 
         return card;
+    }
+
+    // Update Hero Stats
+    function updateHeroStats(studentList) {
+        if (heroTotalStudents) {
+            heroTotalStudents.textContent = studentList.length;
+        }
+        if (heroTotalCourses) {
+            const totalCourses = studentList.reduce((acc, s) => acc + (s.courses ? s.courses.length : 0), 0);
+            heroTotalCourses.textContent = totalCourses;
+        }
     }
 
     // ==========================================
@@ -152,6 +207,7 @@ document.addEventListener("DOMContentLoaded", () => {
             });
 
             studentCountBadge.textContent = `${students.length} Students`;
+            updateHeroStats(students);
         } catch (err) {
             showError("Could not reach the StudyTrack backend. Please ensure the FastAPI server is running.");
             console.error("Fetch Roster Error:", err);
@@ -161,7 +217,6 @@ document.addEventListener("DOMContentLoaded", () => {
     // ==========================================
     // EVENT DELEGATION ON #roster-list
     // ==========================================
-    // Single event listener attached to container to handle "Save Age" and "Delete"
     rosterListContainer.addEventListener("click", async (event) => {
         const action = event.target.dataset.action;
         if (!action) return;
@@ -178,6 +233,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
             if (isNaN(newAge) || newAge <= 0) {
                 showError("Age must be a valid positive integer.");
+                showToast("Age must be a positive number", "error");
                 return;
             }
 
@@ -200,8 +256,10 @@ document.addEventListener("DOMContentLoaded", () => {
                 if (ageTextEl) {
                     ageTextEl.textContent = `Age: ${updatedStudent.age}`;
                 }
+                showToast(`Updated ${updatedStudent.name}'s age to ${updatedStudent.age}`, "success");
             } catch (err) {
                 showError(`Age update failed: ${err.message}`);
+                showToast(err.message, "error");
                 console.error("Save Age Error:", err);
             }
 
@@ -221,12 +279,70 @@ document.addEventListener("DOMContentLoaded", () => {
                 // Update student count badge
                 const currentCards = rosterListContainer.querySelectorAll(".student-card");
                 studentCountBadge.textContent = `${currentCards.length} Students`;
+                if (heroTotalStudents) heroTotalStudents.textContent = currentCards.length;
+                showToast("Student deleted successfully", "info");
             } catch (err) {
                 showError(`Delete operation failed: ${err.message}`);
+                showToast(err.message, "error");
                 console.error("Delete Student Error:", err);
             }
+
+        } else if (action === "open-course-modal") {
+            modalStudentId.value = studentId;
+            modalStudentName.textContent = `${event.target.dataset.name || "Student"} (#${studentId})`;
+            courseModal.classList.remove("hidden");
         }
     });
+
+    // ==========================================
+    // COURSE MODAL FORM HANDLER
+    // ==========================================
+    if (closeModalBtn) {
+        closeModalBtn.addEventListener("click", () => courseModal.classList.add("hidden"));
+    }
+    if (cancelModalBtn) {
+        cancelModalBtn.addEventListener("click", () => courseModal.classList.add("hidden"));
+    }
+
+    if (courseForm) {
+        courseForm.addEventListener("submit", async (e) => {
+            e.preventDefault();
+            const sId = parseInt(modalStudentId.value, 10);
+            const courseName = document.getElementById("course-name-input").value.trim();
+            const credits = parseInt(document.getElementById("course-credits-input").value, 10);
+
+            if (!courseName || isNaN(credits)) {
+                showToast("Please provide valid course name and credits", "error");
+                return;
+            }
+
+            try {
+                const response = await fetch(`${BASE_URL}/courses/`, {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({
+                        course_name: courseName,
+                        credits: credits,
+                        student_id: sId
+                    })
+                });
+
+                if (!response.ok) {
+                    const errData = await response.json().catch(() => ({}));
+                    throw new Error(errData.detail || "Failed to create course");
+                }
+
+                showToast(`Enrolled in '${courseName}' (${credits} credits)!`, "success");
+                courseModal.classList.add("hidden");
+                courseForm.reset();
+
+                // Refresh roster to show updated course counts
+                fetchAndRenderRoster();
+            } catch (err) {
+                showToast(`Course enrollment failed: ${err.message}`, "error");
+            }
+        });
+    }
 
     // ==========================================
     // FORM SUBMIT HANDLER (ADD STUDENT)
@@ -241,6 +357,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
         if (!name || !email || isNaN(age)) {
             showError("Please fill out all student fields.");
+            showToast("Missing required student fields", "error");
             return;
         }
 
@@ -269,9 +386,12 @@ document.addEventListener("DOMContentLoaded", () => {
             // Update badge & reset form
             const currentCards = rosterListContainer.querySelectorAll(".student-card");
             studentCountBadge.textContent = `${currentCards.length} Students`;
+            if (heroTotalStudents) heroTotalStudents.textContent = currentCards.length;
             studentForm.reset();
+            showToast(`Successfully enrolled ${newStudent.name}!`, "success");
         } catch (err) {
             showError(`Could not add student: ${err.message}`);
+            showToast(err.message, "error");
             console.error("Add Student Error:", err);
         }
     });
@@ -280,11 +400,13 @@ document.addEventListener("DOMContentLoaded", () => {
     applyFilterBtn.addEventListener("click", () => {
         const minAge = minAgeFilterInput.value;
         fetchAndRenderRoster(minAge);
+        showToast(`Filtered roster for min age: ${minAge || "None"}`, "info");
     });
 
     clearFilterBtn.addEventListener("click", () => {
         minAgeFilterInput.value = "";
         fetchAndRenderRoster();
+        showToast("Cleared filters", "info");
     });
 
     // ==========================================
@@ -294,13 +416,18 @@ document.addEventListener("DOMContentLoaded", () => {
         hideError();
         const by = sortFieldSelect.value;
         try {
-            const response = await fetch(`${BASE_URL}/students/sorted?by=${by}`);
+            const response = await fetch(`${BASE_URL}/students/sorted?by=${by}&include_metrics=true`);
             if (!response.ok) throw new Error("Failed to fetch sorted roster");
             const data = await response.json();
             
             algoOutputBox.classList.remove("hidden");
             algoOutputContent.textContent = `=== Insertion Sort (by ${by}) ===\n` + 
-                JSON.stringify(data, null, 2);
+                `Execution Time: ${data.execution_time_ms} ms\n` +
+                `Comparisons: ${data.comparisons} | Shifts: ${data.shifts}\n` +
+                `Complexity: Best ${data.time_complexity.best_case} | Worst ${data.time_complexity.worst_case}\n\n` +
+                `Sorted Roster Data:\n` + JSON.stringify(data.data, null, 2);
+            
+            showToast(`Insertion Sort completed by ${by}`, "success");
         } catch (err) {
             showError(`Algorithm error: ${err.message}`);
         }
@@ -311,21 +438,27 @@ document.addEventListener("DOMContentLoaded", () => {
         const name = searchNameInput.value.trim();
         if (!name) {
             showError("Please enter a name to search.");
+            showToast("Enter a name to search", "error");
             return;
         }
         try {
-            const response = await fetch(`${BASE_URL}/students/search?name=${encodeURIComponent(name)}`);
+            const response = await fetch(`${BASE_URL}/students/search?name=${encodeURIComponent(name)}&include_metrics=true`);
             if (response.status === 404) {
                 algoOutputBox.classList.remove("hidden");
                 algoOutputContent.textContent = `=== Binary Search Result ===\nStudent '${name}' not found (404).`;
+                showToast(`Student '${name}' not found`, "info");
                 return;
             }
             if (!response.ok) throw new Error("Search request failed");
             const data = await response.json();
             
             algoOutputBox.classList.remove("hidden");
-            algoOutputContent.textContent = `=== Binary Search Result ===\nFound Record:\n` + 
-                JSON.stringify(data, null, 2);
+            algoOutputContent.textContent = `=== Iterative Binary Search Result ===\n` + 
+                `Found Record: ${data.data.name} (Age: ${data.data.age})\n` +
+                `Execution Time: ${data.execution_time_ms} ms | Iterations: ${data.iterations}\n` +
+                `Search Trace:\n` + JSON.stringify(data.search_trace, null, 2);
+
+            showToast(`Found student: ${data.data.name}`, "success");
         } catch (err) {
             showError(`Search error: ${err.message}`);
         }
@@ -343,6 +476,8 @@ document.addEventListener("DOMContentLoaded", () => {
             algoOutputContent.textContent = `=== Roster Report (Min Age: ${minAge}) ===\n` +
                 `Count Meeting Min Age: ${data.count_meeting_min_age}\n\n` +
                 `Report Text:\n${data.report}`;
+            
+            showToast("Roster report generated", "info");
         } catch (err) {
             showError(`Report error: ${err.message}`);
         }
@@ -367,14 +502,15 @@ document.addEventListener("DOMContentLoaded", () => {
             aiSummaryOutput.classList.remove("hidden");
             aiSummaryOutput.innerHTML = `
                 <h5>Topic: ${escapeHtml(data.topic)}</h5>
-                <p><strong>Difficulty:</strong> <span class="badge">${data.difficulty}</span></p>
+                <p style="margin: 6px 0;"><strong>Difficulty:</strong> <span class="badge" style="background: rgba(168,85,247,0.2); color: #c084fc;">${data.difficulty}</span></p>
                 <p style="margin-top: 8px;"><strong>Key Points:</strong></p>
-                <ul>
+                <ul style="margin-top: 4px;">
                     ${data.key_points.length > 0 
                         ? data.key_points.map(kp => `<li>${escapeHtml(kp)}</li>`).join("") 
                         : "<li><em>(No key points extracted)</em></li>"}
                 </ul>
             `;
+            showToast("Notes summarized successfully", "success");
         } catch (err) {
             showError(`AI Summarizer Error: ${err.message}`);
         }
@@ -394,19 +530,39 @@ document.addEventListener("DOMContentLoaded", () => {
                 return;
             }
 
-            const itemsHtml = results.map(item => `
-                <div class="ai-search-item">
-                    <div style="display: flex; justify-content: space-between;">
-                        <strong>Note #${item.id}</strong>
-                        <span class="score-badge">Score: ${item.score}</span>
+            const itemsHtml = results.map(item => {
+                const fillPercent = Math.min(100, Math.max(0, Math.round(item.score * 100)));
+                return `
+                    <div class="ai-search-item">
+                        <div style="display: flex; justify-content: space-between; align-items: center;">
+                            <strong>Note #${item.id}</strong>
+                            <span class="score-badge">Score: ${item.score}</span>
+                        </div>
+                        <div class="similarity-bar-wrapper">
+                            <div class="similarity-bar-fill" style="width: ${fillPercent}%;"></div>
+                        </div>
+                        <p style="font-size: 0.85rem; color: var(--text-muted); margin-top: 6px; line-height: 1.4;">${escapeHtml(item.text)}</p>
                     </div>
-                    <p style="font-size: 0.85rem; color: var(--text-muted); margin-top: 4px;">${escapeHtml(item.text)}</p>
-                </div>
-            `).join("");
+                `;
+            }).join("");
 
             aiSearchOutput.innerHTML = `<h5>Ranked Similarity Results:</h5>${itemsHtml}`;
+            showToast("Semantic note search completed", "success");
         } catch (err) {
             showError(`AI Search Error: ${err.message}`);
+        }
+    });
+
+    // Keyboard Shortcuts
+    document.addEventListener("keydown", (e) => {
+        if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "k") {
+            e.preventDefault();
+            if (searchNameInput) searchNameInput.focus();
+        } else if (e.key === "Escape") {
+            if (courseModal && !courseModal.classList.contains("hidden")) {
+                courseModal.classList.add("hidden");
+            }
+            hideError();
         }
     });
 

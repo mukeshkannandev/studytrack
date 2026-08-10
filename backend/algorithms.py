@@ -1,4 +1,4 @@
-from typing import List, Dict, Any, Union
+from typing import List, Dict, Any, Union, Tuple
 
 
 def insertion_sort_by_field(students: List[Dict[str, Any]], field: str) -> List[Dict[str, Any]]:
@@ -13,7 +13,6 @@ def insertion_sort_by_field(students: List[Dict[str, Any]], field: str) -> List[
         key_val = key_item[field]
         j = i - 1
         
-        # Shift elements of students[0..i-1] that are greater than key_val to one position ahead
         while j >= 0 and students[j][field] > key_val:
             students[j + 1] = students[j]
             j -= 1
@@ -21,6 +20,33 @@ def insertion_sort_by_field(students: List[Dict[str, Any]], field: str) -> List[
         students[j + 1] = key_item
         
     return students
+
+
+def insertion_sort_by_field_with_metrics(students: List[Dict[str, Any]], field: str) -> Tuple[List[Dict[str, Any]], int, int]:
+    """
+    Hand-written Insertion Sort returning (sorted_list, comparisons_count, shifts_count).
+    """
+    n = len(students)
+    comparisons = 0
+    shifts = 0
+    
+    for i in range(1, n):
+        key_item = students[i]
+        key_val = key_item[field]
+        j = i - 1
+        
+        while j >= 0:
+            comparisons += 1
+            if students[j][field] > key_val:
+                students[j + 1] = students[j]
+                shifts += 1
+                j -= 1
+            else:
+                break
+                
+        students[j + 1] = key_item
+        
+    return students, comparisons, shifts
 
 
 def binary_search_by_name(sorted_by_name_list: List[Dict[str, Any]], name: str) -> Union[Dict[str, Any], int]:
@@ -31,7 +57,6 @@ def binary_search_by_name(sorted_by_name_list: List[Dict[str, Any]], name: str) 
     """
     low = 0
     high = len(sorted_by_name_list) - 1
-    
     target_name = name.strip().lower()
     
     while low <= high:
@@ -46,6 +71,40 @@ def binary_search_by_name(sorted_by_name_list: List[Dict[str, Any]], name: str) 
             high = mid - 1
             
     return -1
+
+
+def binary_search_by_name_with_trace(sorted_by_name_list: List[Dict[str, Any]], name: str) -> Tuple[Union[Dict[str, Any], int], int, List[Dict[str, Any]]]:
+    """
+    Hand-written iterative Binary Search returning (result, iteration_count, execution_trace).
+    """
+    low = 0
+    high = len(sorted_by_name_list) - 1
+    target_name = name.strip().lower()
+    iterations = 0
+    trace = []
+    
+    while low <= high:
+        iterations += 1
+        mid = low + (high - low) // 2
+        mid_name = sorted_by_name_list[mid]["name"].strip().lower()
+        
+        step_info = {
+            "step": iterations,
+            "low": low,
+            "high": high,
+            "mid": mid,
+            "mid_student_name": sorted_by_name_list[mid]["name"]
+        }
+        trace.append(step_info)
+        
+        if mid_name == target_name:
+            return sorted_by_name_list[mid], iterations, trace
+        elif mid_name < target_name:
+            low = mid + 1
+        else:
+            high = mid - 1
+            
+    return -1, iterations, trace
 
 
 def format_roster_report(students: List[Dict[str, Any]]) -> str:

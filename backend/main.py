@@ -1,24 +1,46 @@
 import os
+import time
+import logging
 from typing import List, Optional
-from fastapi import FastAPI, Depends, HTTPException, status, Query
+from fastapi import FastAPI, Depends, HTTPException, status, Query, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
+from fastapi.responses import JSONResponse
 from sqlalchemy.orm import Session
 from sqlalchemy.exc import IntegrityError
 
 from .database import engine, Base, get_db
 from . import models, schemas, crud, algorithms, ai_service, seed_data
 
-# Create database tables
+# Configure structured logging
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s [%(levelname)s] %(name)s: %(message)s"
+)
+logger = logging.getLogger("studytrack")
+
+# Initialize database schema
 Base.metadata.create_all(bind=engine)
 
 app = FastAPI(
-    title="StudyTrack API",
-    description="Unified Full-Stack Study Management Platform with Integrated Algorithms Engine and AI Assistant",
-    version="1.0.0",
+    title="StudyTrack Platform API",
+    description="Enterprise Trainee Enablement Service with Integrated Algorithms Engine and AI Vector Assistant",
+    version="2.0.0",
+    docs_url="/docs",
+    redoc_url="/redoc"
 )
 
-# CORS configuration explicitly allowing frontend dev port 5500 (never wildcard '*')
+# Custom Middleware for Performance Tracking & Request Metrics
+@app.middleware("http")
+async def add_performance_headers_and_log(request: Request, call_next):
+    start_time = time.perf_counter()
+    response = await call_next(request)
+    process_time_ms = (time.perf_counter() - start_time) * 1000
+    response.headers["X-Process-Time-Ms"] = f"{process_time_ms:.3f}"
+    logger.info(f"{request.method} {request.url.path} -> {response.status_code} ({process_time_ms:.2f}ms)")
+    return response
+
+# CORS Configuration (Strictly explicit origins, no wildcard "*")
 origins = [
     "http://localhost:5500",
     "http://127.0.0.1:5500",
@@ -34,74 +56,114 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-
+# Startup Handler with Automatic Seeding
 @app.on_event("startup")
 def startup_event():
-    # Seed database if empty
     db = next(get_db())
     try:
         seed_data.seed_if_empty(db)
+        logger.info("Database initialized and verified with seed dataset.")
     finally:
         db.close()
 
+# Custom Exception Handler for Database Integrity Conflicts
+@app.exception_handler(IntegrityError)
+async def integrity_exception_handler(request: Request, exc: IntegrityError):
+    logger.error(f"Database Integrity Error on {request.url.path}: {str(exc.orig)}")
+    return JSONResponse(
+        status_code=status.HTTP_400_BAD_REQUEST,
+        content={"detail": "Database Integrity Constraint Error: Duplicate email address or foreign key violation."}
+    )
 
 # ==========================================
 # PART 1: CORE STUDENT & COURSE CRUD ENDPOINTS
 # ==========================================
 
-@app.post("/students/", response_model=schemas.StudentResponse, status_code=status.HTTP_201_CREATED)
+@app.post("/students/", response_model=schemas.StudentResponse, status_code=status.HTTP_201_CREATED, tags=["Students CRUD"])
 def create_student(student: schemas.StudentCreate, db: Session = Depends(get_db)):
-    # Check duplicate email explicitly
     existing = crud.get_student_by_email(db, student.email)
     if existing:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="A student with this email address already exists."
         )
-    try:
-        return crud.create_student(db=db, student=student)
-    except IntegrityError:
-        db.rollback()
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Database integrity error: Duplicate email or constraint violation."
-        )
+    return crud.create_student(db=db, student=student)
 
 
-@app.get("/students/", response_model=List[schemas.StudentResponse])
+@app.get("/students/", response_model=List[schemas.StudentResponse], tags=["Students CRUD"])
 def read_students(min_age: Optional[int] = Query(None, description="Filter students with age >= min_age"), db: Session = Depends(get_db)):
     return crud.get_students(db=db, min_age=min_age)
 
 
-# Note: Algorithms routes under /students/ must be defined before /students/{student_id} path parameter to prevent routing collisions
-@app.get("/students/sorted")
-def get_sorted_students(by: str = Query("age", description="Sort by field: 'age' or 'name'"), db: Session = Depends(get_db)):
+# IMPORTANT: Algorithm routes defined before /{student_id} to prevent routing collisions
+@app.get("/students/sorted", tags=["Algorithms Engine"])
+def get_sorted_students(
+    by: str = Query("age", description="Sort field: 'age' or 'name'"),
+    include_metrics: bool = Query(False, description="Return algorithm benchmark execution metrics"),
+    db: Session = Depends(get_db)
+):
     if by not in ["age", "name"]:
         raise HTTPException(status_code=400, detail="Query parameter 'by' must be 'age' or 'name'.")
+    
     students_orm = crud.get_students(db=db)
     students_dicts = [
         {"id": s.id, "name": s.name, "email": s.email, "age": s.age} for s in students_orm
     ]
-    sorted_list = algorithms.insertion_sort_by_field(students_dicts, field=by)
+    
+    start_time = time.perf_counter()
+    sorted_list, comparisons, shifts = algorithms.insertion_sort_by_field_with_metrics(students_dicts, field=by)
+    exec_time_ms = (time.perf_counter() - start_time) * 1000
+
+    if include_metrics:
+        return {
+            "algorithm": "Insertion Sort",
+            "field": by,
+            "execution_time_ms": round(exec_time_ms, 4),
+            "comparisons": comparisons,
+            "shifts": shifts,
+            "time_complexity": {"best_case": "O(n)", "worst_case": "O(n^2)"},
+            "data": sorted_list
+        }
     return sorted_list
 
 
-@app.get("/students/search")
-def search_student_by_name(name: str = Query(..., description="Exact student name to search"), db: Session = Depends(get_db)):
+@app.get("/students/search", tags=["Algorithms Engine"])
+def search_student_by_name(
+    name: str = Query(..., description="Exact student name to search"),
+    include_metrics: bool = Query(False, description="Return binary search execution trace"),
+    db: Session = Depends(get_db)
+):
     students_orm = crud.get_students(db=db)
     students_dicts = [
         {"id": s.id, "name": s.name, "email": s.email, "age": s.age} for s in students_orm
     ]
-    # Algorithm requirement: sort alphabetically by name using Python built-in sorted() first
+    
+    # Sort by name alphabetically first as required by Binary Search precondition
     sorted_by_name = sorted(students_dicts, key=lambda x: x["name"])
-    result = algorithms.binary_search_by_name(sorted_by_name, name)
+    
+    start_time = time.perf_counter()
+    result, iterations, trace = algorithms.binary_search_by_name_with_trace(sorted_by_name, name)
+    exec_time_ms = (time.perf_counter() - start_time) * 1000
+
     if result == -1:
         raise HTTPException(status_code=404, detail=f"Student with name '{name}' not found.")
+    
+    if include_metrics:
+        return {
+            "algorithm": "Iterative Binary Search",
+            "searched_name": name,
+            "found": True,
+            "execution_time_ms": round(exec_time_ms, 4),
+            "iterations": iterations,
+            "search_trace": trace,
+            "time_complexity": "O(log n)",
+            "data": result
+        }
     return result
 
 
-@app.get("/students/report")
-def get_roster_report(min_age: int = Query(21, description="Minimum age filter for count"), db: Session = Depends(get_db)):
+@app.get("/students/report", tags=["Algorithms Engine"])
+def get_roster_report(min_age: int = Query(21, description="Minimum age threshold"), db: Session = Depends(get_db)):
     students_orm = crud.get_students(db=db)
     students_dicts = [
         {"id": s.id, "name": s.name, "email": s.email, "age": s.age} for s in students_orm
@@ -114,40 +176,40 @@ def get_roster_report(min_age: int = Query(21, description="Minimum age filter f
     }
 
 
-@app.get("/students/{student_id}", response_model=schemas.StudentResponse)
+@app.get("/students/{student_id}", response_model=schemas.StudentResponse, tags=["Students CRUD"])
 def read_student(student_id: int, db: Session = Depends(get_db)):
     db_student = crud.get_student(db, student_id=student_id)
     if db_student is None:
-        raise HTTPException(status_code=404, detail="Student not found")
+        raise HTTPException(status_code=404, detail=f"Student with ID {student_id} not found")
     return db_student
 
 
-@app.patch("/students/{student_id}", response_model=schemas.StudentResponse)
+@app.patch("/students/{student_id}", response_model=schemas.StudentResponse, tags=["Students CRUD"])
 def update_student(student_id: int, student_data: schemas.StudentUpdate, db: Session = Depends(get_db)):
     db_student = crud.update_student(db, student_id=student_id, student_data=student_data)
     if db_student is None:
-        raise HTTPException(status_code=404, detail="Student not found")
+        raise HTTPException(status_code=404, detail=f"Student with ID {student_id} not found")
     return db_student
 
 
-@app.delete("/students/{student_id}", status_code=status.HTTP_204_NO_CONTENT)
+@app.delete("/students/{student_id}", status_code=status.HTTP_204_NO_CONTENT, tags=["Students CRUD"])
 def delete_student(student_id: int, db: Session = Depends(get_db)):
     success = crud.delete_student(db, student_id=student_id)
     if not success:
-        raise HTTPException(status_code=404, detail="Student not found")
+        raise HTTPException(status_code=404, detail=f"Student with ID {student_id} not found")
     return None
 
 
-@app.get("/students/{student_id}/course-count", response_model=schemas.StudentCourseCountResponse)
+@app.get("/students/{student_id}/course-count", response_model=schemas.StudentCourseCountResponse, tags=["Students CRUD"])
 def get_student_course_count(student_id: int, db: Session = Depends(get_db)):
     db_student = crud.get_student(db, student_id=student_id)
     if db_student is None:
-        raise HTTPException(status_code=404, detail="Student not found")
+        raise HTTPException(status_code=404, detail=f"Student with ID {student_id} not found")
     count = crud.get_student_course_count(db, student_id=student_id)
     return {"student_id": student_id, "course_count": count}
 
 
-@app.post("/courses/", response_model=schemas.CourseResponse, status_code=status.HTTP_201_CREATED)
+@app.post("/courses/", response_model=schemas.CourseResponse, status_code=status.HTTP_201_CREATED, tags=["Courses CRUD"])
 def create_course(course: schemas.CourseCreate, db: Session = Depends(get_db)):
     student = crud.get_student(db, student_id=course.student_id)
     if not student:
@@ -155,32 +217,32 @@ def create_course(course: schemas.CourseCreate, db: Session = Depends(get_db)):
     return crud.create_course(db=db, course=course)
 
 
-@app.get("/courses/", response_model=List[schemas.CourseResponse])
+@app.get("/courses/", response_model=List[schemas.CourseResponse], tags=["Courses CRUD"])
 def read_courses(db: Session = Depends(get_db)):
     return crud.get_courses(db=db)
 
 
-@app.get("/courses/{course_id}", response_model=schemas.CourseResponse)
+@app.get("/courses/{course_id}", response_model=schemas.CourseResponse, tags=["Courses CRUD"])
 def read_course(course_id: int, db: Session = Depends(get_db)):
     db_course = crud.get_course(db, course_id=course_id)
     if db_course is None:
-        raise HTTPException(status_code=404, detail="Course not found")
+        raise HTTPException(status_code=404, detail=f"Course with ID {course_id} not found")
     return db_course
 
 
-@app.patch("/courses/{course_id}", response_model=schemas.CourseResponse)
+@app.patch("/courses/{course_id}", response_model=schemas.CourseResponse, tags=["Courses CRUD"])
 def update_course(course_id: int, course_data: schemas.CourseUpdate, db: Session = Depends(get_db)):
     db_course = crud.update_course(db, course_id=course_id, course_data=course_data)
     if db_course is None:
-        raise HTTPException(status_code=404, detail="Course not found")
+        raise HTTPException(status_code=404, detail=f"Course with ID {course_id} not found")
     return db_course
 
 
-@app.delete("/courses/{course_id}", status_code=status.HTTP_204_NO_CONTENT)
+@app.delete("/courses/{course_id}", status_code=status.HTTP_204_NO_CONTENT, tags=["Courses CRUD"])
 def delete_course(course_id: int, db: Session = Depends(get_db)):
     success = crud.delete_course(db, course_id=course_id)
     if not success:
-        raise HTTPException(status_code=404, detail="Course not found")
+        raise HTTPException(status_code=404, detail=f"Course with ID {course_id} not found")
     return None
 
 
@@ -192,13 +254,15 @@ class SummarizeRequest(schemas.BaseModel):
     text: str
 
 
-@app.post("/assistant/summarize")
+@app.post("/assistant/summarize", tags=["AI Assistant"])
 def summarize_notes_endpoint(request: SummarizeRequest):
     return ai_service.summarize_notes(request.text)
 
 
-@app.get("/assistant/search")
-def search_notes_endpoint(query: str = Query("", description="Query string to match notes via semantic vector similarity")):
+@app.get("/assistant/search", tags=["AI Assistant"])
+def search_notes_endpoint(
+    query: str = Query("", description="Semantic vector search query over study notes")
+):
     return ai_service.search_notes(query)
 
 
