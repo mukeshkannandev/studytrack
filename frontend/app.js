@@ -141,7 +141,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
         const saveAgeBtn = document.createElement("button");
         saveAgeBtn.className = "btn btn-secondary btn-save-age";
-        saveAgeBtn.textContent = "Save";
+        saveAgeBtn.textContent = "Save Age";
         saveAgeBtn.dataset.action = "save-age";
 
         ageControlDiv.appendChild(ageLabel);
@@ -154,7 +154,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
         const deleteBtn = document.createElement("button");
         deleteBtn.className = "btn btn-danger btn-delete";
-        deleteBtn.textContent = "Delete Student";
+        deleteBtn.textContent = "Delete";
         deleteBtn.dataset.action = "delete";
 
         cardActions.appendChild(deleteBtn);

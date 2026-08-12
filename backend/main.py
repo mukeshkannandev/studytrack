@@ -104,17 +104,19 @@ def get_sorted_students(
 ):
     if by not in ["age", "name"]:
         raise HTTPException(status_code=400, detail="Query parameter 'by' must be 'age' or 'name'.")
-    
+
     students_orm = crud.get_students(db=db)
     students_dicts = [
         {"id": s.id, "name": s.name, "email": s.email, "age": s.age} for s in students_orm
     ]
-    
-    start_time = time.perf_counter()
-    sorted_list, comparisons, shifts = algorithms.insertion_sort_by_field_with_metrics(students_dicts, field=by)
-    exec_time_ms = (time.perf_counter() - start_time) * 1000
 
     if include_metrics:
+        # Enhanced path: returns benchmark data alongside sorted results
+        start_time = time.perf_counter()
+        # Work on a copy so the base sort below is unaffected
+        dicts_copy = [d.copy() for d in students_dicts]
+        sorted_copy, comparisons, shifts = algorithms.insertion_sort_by_field_with_metrics(dicts_copy, field=by)
+        exec_time_ms = (time.perf_counter() - start_time) * 1000
         return {
             "algorithm": "Insertion Sort",
             "field": by,
@@ -122,8 +124,11 @@ def get_sorted_students(
             "comparisons": comparisons,
             "shifts": shifts,
             "time_complexity": {"best_case": "O(n)", "worst_case": "O(n^2)"},
-            "data": sorted_list
+            "data": sorted_copy
         }
+
+    # Default path: calls insertion_sort_by_field() directly as required
+    sorted_list = algorithms.insertion_sort_by_field(students_dicts, field=by)
     return sorted_list
 
 
@@ -137,18 +142,17 @@ def search_student_by_name(
     students_dicts = [
         {"id": s.id, "name": s.name, "email": s.email, "age": s.age} for s in students_orm
     ]
-    
-    # Sort by name alphabetically first as required by Binary Search precondition
-    sorted_by_name = sorted(students_dicts, key=lambda x: x["name"])
-    
-    start_time = time.perf_counter()
-    result, iterations, trace = algorithms.binary_search_by_name_with_trace(sorted_by_name, name)
-    exec_time_ms = (time.perf_counter() - start_time) * 1000
 
-    if result == -1:
-        raise HTTPException(status_code=404, detail=f"Student with name '{name}' not found.")
-    
+    # Sort alphabetically by name first — required precondition for Binary Search
+    sorted_by_name = sorted(students_dicts, key=lambda x: x["name"])
+
     if include_metrics:
+        # Enhanced path: returns execution trace alongside result
+        start_time = time.perf_counter()
+        result_trace, iterations, trace = algorithms.binary_search_by_name_with_trace(sorted_by_name, name)
+        exec_time_ms = (time.perf_counter() - start_time) * 1000
+        if result_trace == -1:
+            raise HTTPException(status_code=404, detail=f"Student with name '{name}' not found.")
         return {
             "algorithm": "Iterative Binary Search",
             "searched_name": name,
@@ -157,8 +161,13 @@ def search_student_by_name(
             "iterations": iterations,
             "search_trace": trace,
             "time_complexity": "O(log n)",
-            "data": result
+            "data": result_trace
         }
+
+    # Default path: calls binary_search_by_name() directly as required
+    result = algorithms.binary_search_by_name(sorted_by_name, name)
+    if result == -1:
+        raise HTTPException(status_code=404, detail=f"Student with name '{name}' not found.")
     return result
 
 

@@ -74,16 +74,19 @@ def summarize_notes(raw_text: str) -> Dict[str, Any]:
 def mock_embed(text: str) -> List[float]:
     """
     Deterministically turns any input string into a fixed 12-length numeric vector over VOCABULARY.
-    Tokenization: lowercase, split on non-alphanumeric characters. Exact whole-token match count.
+    Tokenization: lowercase the input, then split on any run of characters that are NOT letters or
+    digits using the pattern [A-Za-z0-9]+ (so spaces, punctuation, and apostrophes act as separators;
+    e.g. "LLM's" splits into ["llm", "s"]). Exact whole-token matches against the vocabulary only.
     """
     if not text:
         return [0.0] * len(VOCABULARY)
-        
-    tokens = re.findall(r'\w+', text.lower())
+
+    # Use [A-Za-z0-9]+ as specified: splits on anything that is not a letter or digit
+    tokens = re.findall(r'[A-Za-z0-9]+', text.lower())
     token_counts = {}
     for token in tokens:
         token_counts[token] = token_counts.get(token, 0) + 1
-        
+
     vector = [float(token_counts.get(word, 0)) for word in VOCABULARY]
     return vector
 
